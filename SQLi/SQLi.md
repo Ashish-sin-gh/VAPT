@@ -199,6 +199,8 @@ attacker have access to user john@a.com account.
 
 ## SQLi UNION attacks:
 
+It is used for retrievel of information and not login bypass.  
+
 When an application is vulnerable to SQL injection, and the results of the query are returned within the application's responses, you can use the `UNION` keyword to retrieve data from `other tables` within the database.  
 
 `UNION` combines the results of two SELECT queries into one single output.
@@ -216,3 +218,76 @@ This attack only works when:
 1. column count of attackers query must match with orignal query 
 2. data type is matched 
 3. output is refelected on the page 
+
+#### How know number of coloum in original attack?
+1. **inject series of `ORDER BY` clause** and increase the column index untill an error occurs.  
+    > ' ORDER BY 1  
+    ' ORDER BY 2  
+    ' ORDER BY 3  
+    etc.  
+
+    `ORDER BY` allow to refer to column using index number. 
+
+    column number that dont exit - DB throws error.  
+
+2. **submitting a series of UNION SELECT payloads** specifying a different number of null values.
+    > ' UNION SELECT NULL--  
+    ' UNION SELECT NULL,NULL--  
+    ' UNION SELECT NULL,NULL,NULL--  
+    etc.  
+    
+    keep adding `null` until it works.  
+    if number of null does not match number of column - DB throws error
+
+    NULL is convertible to every common data type, so it maximizes the chance that the payload will succeed when the column count is correct.   
+
+    When the number of nulls matches the number of columns, the database returns an additional row in the result set, containing null values in each column.
+
+    **what to look for?** 
+    1. when null count is correct - aditional content within the HTTP response. eg- extra row on an HTML table.
+    2. null value might trigger `nullPointerException` (app crash) - meaning column count is correct 
+    3. worst case - same response | page look same | no error (method has become ineffective)
+
+    **ORACLE**  
+    On Oracle, every `SELECT` query must use the `FROM` keyword and specify a valid table.  
+    There is a built-in table on Oracle called `dual` which can be used for this purpose.
+    > ' UNION SELECT NULL FROM DUAL--
+
+### finding coloum with useful datatypes:  
+
+The interesting data that you want to retrieve is normally in string form.  
+means - `find one or more column with string compatible datatype.`
+
+step:  
+1. find number of columns.
+2. probe each column to check if it can hold string data.  
+    submit series `UNION SELECT` payloads that place a string value into each column in turn.  
+
+    `example` : query returned 4 column.  
+        the check for string datatype in columns will look like: 
+    > ' UNION SELECT 'a',NULL,NULL,NULL--  
+    ' UNION SELECT NULL,'a',NULL,NULL--  
+    ' UNION SELECT NULL,NULL,'a',NULL--  
+    ' UNION SELECT NULL,NULL,NULL,'a'--
+
+    If the column data type is not compatible with string data, the injected query will cause a database error
+
+    If no error - that column have a string values.
+
+### SQLi UNION attack - Retrieving information  
+Step #1 - determine the number of columns.      
+Step #2 - identify the columns of string Data-type.  
+**Step #3 - retrieve interesting information**  
+
+To retrieve string information from the table - you **need to know**:  
+1. **table name**
+2. **columns name**
+
+`example`:   
+    suppose that:  
+    table name = user,
+    column name = username, password (both string DataType)  
+   **retrieve information using query:**
+> ' UNION SELECT username, password FROM users--
+
+*All modern databases provide ways to examine the database structure, and determine what tables and columns they contain.*
