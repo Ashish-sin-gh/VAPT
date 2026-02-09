@@ -663,3 +663,123 @@ direct error is thrown.
 7. get the reuqired username and password:
     > TrackingId=' AND 1=CAST((SELECT username FROM users LIMIT 1) AS int)--
     > TrackingId=' AND 1=CAST((SELECT password FROM users LIMIT 1) AS int)--
+
+### Exploiting blind SQL injection by triggering time delays
+
+When an SQLi injection is done and the application handle the error gracefully on DB error, you wont see any change in the application resonse.  
+- no error 
+- no output 
+- no hint  
+
+This means the previous technique for inducing conditional errors will not work.
+  
+**why?**
+- SQL erors are caught.
+- error messages are suspended.
+- HTTP response looks identical
+
+
+here comes Time Delay attack - **exploit the SQLi vulnerabilty by triggering time delay** depending on whether a condition is true or false.
+
+ SQL queries are normally processed **synchronously** by the application.  
+ delaying the execution of a SQL query also delays the HTTP response.   
+ This allows to **determine the truth of the injected condition** based on the **time taken** to receive the HTTP response. 
+
+ #### Core Idea:
+ ***Make the DB sleep when condition is true.***  
+ 
+ - Fast response - condition is false.  
+ - Slow response - condition is true.
+
+ `Does the first character of the admin password equal ‘a’?`  
+ true - DB waits for 5 sec  
+ false - DB responds normally
+
+#### Where to use it:
+1. Erros are sippressed  
+2. Output is not reflected
+3. WAF blocks obvious payloads
+4. only response time is observable
+
+#### `VERY COMMON IN REAL TIME PENTESTS`
+
+#### downside:
+
+- very slow
+- very noisy
+- easy to detect in logs
+- require automation
+
+#### How to fix:
+- disable dynamic SQL
+- add query timeout
+- parameterized queries
+- monitor abnormal response delays.
+
+
+### In Microsoft SQL test if time delay works:
+> '; IF (1=2) WAITFOR DELAY '0:0:10'--  
+'; IF (1=1) WAITFOR DELAY '0:0:10'--
+
+### Retrieve data by testing one character at a time:
+>'; IF (SELECT COUNT(Username) FROM Users WHERE Username = 'Administrator' AND SUBSTRING(Password, 1, 1) > 'm') = 1 WAITFOR DELAY '0:0:{delay}'--
+
+### Example - delay based SQLi (postgres SQL):
+
+Check if response is delayed or not:
+> TrackingId=x'%3BSELECT+CASE+WHEN+(1=1)+THEN+pg_sleep(10)+ELSE+pg_sleep(0)+END--
+
+this means :
+
+> x';   
+'SELECT CASE     
+WHEN (1=1)  
+THEN pg_sleep(10)   
+ ELSE pg_sleep(0)   
+END--
+
+#### Database and sleep function:
+
+| DATABASE | Sleep function |
+|:---------:|:-----------------:|
+|PostgreSQL|pg_sleep(10)|
+|MySQL|SLEEP(10)|
+|MSSQL|WAITFOR DELAY '00:00:10'|
+|Oracle|DBMS_LOCK.SLEEP(10)|
+
+#### why Burp Intruder must be single-threaded for time-based blind SQL injection?
+By default, Intruder sends many requests in parallel.
+
+##### problem it causes:
+- overlapping delays.  
+
+    if 5 request are sent at the same time
+    - 1 req trigger pg_sleep(10)
+    - others dont
+    - responses are arrived out of order.
+
+    you cant tell which payload caused the delay
+
+- server side queueing  
+
+    webservers and DB:
+    - queue requests
+    - reuse DB connections
+    - throttle long-running queries  
+
+    A delayed query can slow unrelated requests, creating false positives.
+
+- network noice: 
+
+    Parallel traffic causes:
+    - variable latency
+    - jitter
+    - timing inconsistencies
+
+**Setting `Maximum concurrent requests = 1` in *Resource Pool* ensures:**
+- 1 request at a time.
+- delay belongs to the exact payload sent
+- clear fast vs slow distinction
+- reliable true/false detection.
+
+    Each response time directly maps to one injected condition.
