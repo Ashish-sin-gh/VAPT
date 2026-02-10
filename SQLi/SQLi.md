@@ -1018,4 +1018,89 @@ Weak implementations often look for **common SQL injection keywords** within the
 
         #### defence - security check of `WAF` should happen after decoding of the formate 
 
+### Second-order SQLi
 
+**First-order SQli** - when attacker's injected payload is immediatly executed and the response is seen in same request.
+
+```
+Input -> created SQL query -> injection executed -> result/error/delay retuned immediately
+
+Everything happens in one flow.
+```
+##### Why called first-order:
+- No delay 
+- no storage 
+- no later execution
+
+#### Second-order SQLi / Stored SQLi:
+
+when the app takes user input from HTTP request,   
+**Store it safely** for future use.
+
+Input placed in a DB safely.
+
+Executed later - when a new HTTP request is handled.
+
+**Injection dont take place when it is stored,
+It happens when data is retrived.**
+
+developer gives the input initial protection:
+- parameterized query / prepared statements
+- encoding 
+- validation
+
+**Developer thinks data in DB is safe as it not coming from user but from DB itself**.
+
+
+### How to prevent SQL injection
+
+#### Parameterized query:
+
+only works on user inputable values:
+- `WHERE`
+- `INSERT-VALUE`
+-  `UPDATE`
+
+DB know the query Structure.
+
+parameterized SQL query is not for **SQL structure**:
+- table name
+- column name
+- ORDER BY column
+- SQL keywords (ASC/DESC)
+
+##### Bad Practice:
+> String sort = request.get("sort");  
+String q = "SELECT * FROM users ORDER BY " + sort;
+
+Attacker input:
+> id; DROP TABLE users--
+
+Final query:
+> SELECT * FROM users ORDER BY id; DROP TABLE users--
+
+**boom! SQL INJECTION**
+
+
+
+best practice:  
+- use **whitelist** for such a case - i.e. provide `allowed options` only.
+    ```
+        if (sort.equals("name")) {
+            q = "SELECT * FROM users ORDER BY name";
+        } else if (sort.equals("date")) {
+            q = "SELECT * FROM users ORDER BY created_at";
+        } else {
+            throw error;
+        }
+    ```
+
+- Query string must always be a **hard-coded constant**
+- Using different logic. - dont make SQL dynamic
+    > ORDER BY user_input       `//no-never`
+
+    > ORDER BY name  
+    > ORDER BY date
+
+**SQL string = 100% hard-coded**  
+**User input = 100% parameters**
