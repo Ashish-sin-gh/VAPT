@@ -22,7 +22,7 @@ if __name__ == "__main__":
     except:
         print("[-] Input error")
         print("[-] usage: %s <url> <payload>" %sys.argv[0])
-        sys.exit(-1);
+        sys.exit(-1)
 
     if exploit_sqli(url,payload):
         print("SQLi successful")
