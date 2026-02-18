@@ -12,6 +12,19 @@ import sys
 import urllib3  
 ```
 
+#### urllib3:
+
+It is a powerful python HTTP client library  
+Used to send HTTP/HTTPS request. 
+
+sent requests:
+- GET
+- POST
+- PUT
+- DELETE 
+
+**Low level library used by many other library (requests) internally.**
+
 ### 2. Set the proxy settings 
 
 - great way of debugging why the script is not working.
