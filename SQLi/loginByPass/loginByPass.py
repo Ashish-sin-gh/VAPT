@@ -1,7 +1,7 @@
 import requests
 import sys
 import urllib3
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup   #used to parse HTML, extract datafrom webpage, find tags (even hidden tags) in HTML
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
@@ -12,7 +12,6 @@ def get_csrf(session, url):
     soup = BeautifulSoup(loginGETResponse.text, 'html.parser')
     csrf = soup.find("input")['value']
     return csrf
-
 
 def username_matched(session, url, paylaod):
     # authentication require 3 fields - csrf, username, password
