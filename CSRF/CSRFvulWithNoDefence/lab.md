@@ -13,7 +13,9 @@ email change functionality
 ### credentials: 
 wiener:peter
 
-### Is email change prone to CSRF attack?
+### Analysis
+
+#### Is email change prone to CSRF attack?
 
 ![mail change POST request](../images/mailChangeRequest.png)
 

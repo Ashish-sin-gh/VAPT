@@ -128,6 +128,8 @@ You shoud NOT use `GET` method in oder to submit Data to app - Intoduces potenti
 4. Makes CSRF attacks easier.  
     ```<img src="https://bank.com/transfer?amount=1000">```
 
+If a state-changing action uses GET, CSRF becomes extremely easy
+
 victim should click on an malicious application, that will run a script containing this request:
 
 ``` 
@@ -218,8 +220,10 @@ Web Application Vulnerability Scanners(WAVS)
         - It will be an successful request. coz target app backend wont check the session's CSRF.
     - validated before the relevent action is executed.
 
-    **How CSRF token is transmitted?**
+    #### How CSRF token is transmitted?
     1. ***hidden field of an HTML `form`*** that is submitted using `POST` method and CSRF token is passed in the parameter.
+
+        ![share CSRF using hidden field in form](./images/sharecsrf.png)
 
     2. Custom request header - not used as much
 
@@ -227,7 +231,7 @@ Web Application Vulnerability Scanners(WAVS)
 
     4. tokens transmitted within cookies. - never do it 
 
-    **How CSRF token is validated?**
+    #### How CSRF token is validated?
     1. generated and stored server-side
 
     2. when performing a request, a validation should be performed - verify submitted token = stored token in the user's session.
@@ -238,9 +242,13 @@ Web Application Vulnerability Scanners(WAVS)
 
 2. **Additional Defences:**  
 
-    use of sameSite cookies.  
+    use of sameSite cookies.
 
-    the `sameSite` attribute added to `set-cookie` response header when a server issue a cookie, typically during login or session initialization.
+    It is a broswer security mechanism. 
+
+    When will a `website's cookie` be sent with a request origining from other websites
+
+    the `sameSite` attribute is added to `set-cookie` response header when a server issue a cookie, typically during login or session initialization.
 
     Used to control whether cookies are submitted in cross-site requests.  
 
@@ -252,11 +260,13 @@ Web Application Vulnerability Scanners(WAVS)
 
 3. **Inadequate defences:** (can be bypassed but are used in real life scenario)  
 
-    use of `referer` header.
+    use of `referer` header by some appilications.
 
     `referer` HTTP request header - contains an absolute or partial address of the page making the requests.
 
     > tracks where the request came from 
+
+    This is generally **less effective than CSRF token** validation. 
 
     #### why it is used?
     the application usually check the if,
@@ -272,3 +282,18 @@ Web Application Vulnerability Scanners(WAVS)
         - example #2 - referer header is only checked to see if it contains the domain and exact match is not made.  
         if you include domain of the app as query parameter in a URL
             > www.malsite.com/?bank.com
+
+### Common flaws in CSRF token validation:
+CSRF vulnerabilities typically arise due to flawed validation of CSRF tokens.
+
+1. Validation of CSRF dependent on **Request method**  
+    ([refer lab](./tokenValidationReqMethod/lab.md))
+
+    - application skip the validation when the `GET` method is used.  
+    - correctly validate token for `POST` method.
+    
+    Hence attacker can use `GET` method to bypass the CSRF token validation while attacking
+
+    ![GET method skip validation](./images/getSkipValidation.png)
+
+2. 
