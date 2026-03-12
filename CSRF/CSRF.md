@@ -283,6 +283,12 @@ Web Application Vulnerability Scanners(WAVS)
         if you include domain of the app as query parameter in a URL
             > www.malsite.com/?bank.com
 
+### Test CSRF token:
+
+1. remove `CSRF token` from `POST` request paramter and check if app is still working.
+
+2. change request method from `POST` to `GET` and check if app is still working.
+
 ### Common flaws in CSRF token validation:
 CSRF vulnerabilities typically arise due to flawed validation of CSRF tokens.
 
@@ -296,4 +302,10 @@ CSRF vulnerabilities typically arise due to flawed validation of CSRF tokens.
 
     ![GET method skip validation](./images/getSkipValidation.png)
 
-2. 
+2. Validation of CSRF token depends on token being present  
+    ([refer lab](./tokenPresentValidation/lab.md))
+
+    - if token is present - apps validate the token
+    - but when it is **not present - some apps skip** it
+
+    attacker can exploit this, by removing the entire CSRF parameter from the request. 

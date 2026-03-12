@@ -1,6 +1,6 @@
 # CSRF token validation dependent on Request method
 
-### [vulneable website link](https://portswigger.net/web-security/learning-paths/csrf/csrf-common-flaws-in-csrf-token-validation/csrf/bypassing-token-validation/lab-token-validation-depends-on-request-method#)
+
 
 ### vulnerable parameter:
 email change functionality
@@ -25,7 +25,7 @@ wiener:peter
 
 - Can change the users name and later change the password and have the control of the victims account.
 
-#### presence of unpredictable parameter in the request ? -> YES
+#### 3. presence of unpredictable parameter in the request ? -> YES
 - in `POST` method request parameter - CSRF token is attachted.
 
 - but there is a catch 
@@ -47,7 +47,7 @@ wiener:peter
         - **what if the app allow to send get request and write to application?**
 
 
-### How the script runs ?
+## How the script runs ?
 1. spun up an python server on local host
 
     - generate a self-signed certifcate in same directory as the files you want to serve:
