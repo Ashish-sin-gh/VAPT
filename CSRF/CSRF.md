@@ -302,6 +302,7 @@ CSRF vulnerabilities typically arise due to flawed validation of CSRF tokens.
 
     ![GET method skip validation](./images/getSkipValidation.png)
 
+
 2. Validation of CSRF token depends on token being present  
     ([refer lab](./tokenPresentValidation/lab.md))
 
@@ -309,3 +310,19 @@ CSRF vulnerabilities typically arise due to flawed validation of CSRF tokens.
     - but when it is **not present - some apps skip** it
 
     attacker can exploit this, by removing the entire CSRF parameter from the request. 
+
+
+3. CSRF token is not tied to the user session
+
+    - some applications do not validate that the token belongs to the same session as the user who is making the request.
+
+    - the app maintain a global pool of CSRF token that it has issued.
+    
+    - app accepts any token that appears in the pool.
+
+    attacker can abuse this by:  
+    - logging into the app using his own account 
+    - obtain a valid token
+    - feed that token to the victim user account.
+
+    This happens coz of improper implementation of CSRF token by the devs.
