@@ -292,7 +292,7 @@ Web Application Vulnerability Scanners(WAVS)
 ### Common flaws in CSRF token validation:
 CSRF vulnerabilities typically arise due to flawed validation of CSRF tokens.
 
-1. Validation of CSRF dependent on **Request method**  
+1. **Validation of CSRF dependent on Request method**  
     ([refer lab](./tokenValidationReqMethod/lab.md))
 
     - application skip the validation when the `GET` method is used.  
@@ -303,7 +303,7 @@ CSRF vulnerabilities typically arise due to flawed validation of CSRF tokens.
     ![GET method skip validation](./images/getSkipValidation.png)
 
 
-2. Validation of CSRF token depends on token being present  
+2. **Validation of CSRF token depends on token being present**  
     ([refer lab](./tokenPresentValidation/lab.md))
 
     - if token is present - apps validate the token
@@ -312,7 +312,8 @@ CSRF vulnerabilities typically arise due to flawed validation of CSRF tokens.
     attacker can exploit this, by removing the entire CSRF parameter from the request. 
 
 
-3. CSRF token is not tied to the user session
+3. **CSRF token is not tied to the user session**  
+    ([refer lab](./tokenNotTiedToASession/sessionCheck.md))
 
     - some applications do not validate that the token belongs to the same session as the user who is making the request.
 
@@ -326,3 +327,56 @@ CSRF vulnerabilities typically arise due to flawed validation of CSRF tokens.
     - feed that token to the victim user account.
 
     This happens coz of improper implementation of CSRF token by the devs.
+
+4. **CSRF token is tied to a non-session cookie**  
+    ([refer lab](.))
+
+    ![csrf and session not tied together](./images/csrfkey&sessionkey.png) 
+
+    - **harder to exploit.**  
+    
+    - some application tie the CSRF token to a wrong cookie (**not** a cookie that track session).
+
+    - happens when applicaiton employs 2 diff framework
+        1. for session handling
+        2. for CSRF protection.  
+
+        and not integreted together.
+
+        ![different frameworks in cookie storage](./images/diffFrameworks.png)
+
+        #### if `session` and `csrfkey`(being used to manage the CSRF token) is not tied to eachother - functionality is vulnerable to CSRF attack.
+
+
+    #### How to perform?
+    
+    1. attacker set a cookie in a viticm's browser
+
+    2. attacker log in to the application using own account
+
+    3. obtain a valid token and associated cookie
+
+    4. leverage the cookie-setting behavior to place their cookie into the victim's browser
+
+    5. feed their token to the victim in their CSRF attack. 
+
+    ```
+    note-
+        Even if the vulnerable application itself does not allow cookie manipulation, another subdomain in the same DNS domain might allow setting cookies that will also be sent to the vulnerable application, enabling CSRF attacks.   
+
+        Victim browser
+                │
+                ▼
+    staging.demo.normal-website.com
+        (attacker sets cookie)
+                │
+                ▼
+    Cookie stored for normal-website.com
+                │
+                ▼
+    Victim visits secure.normal-website.com
+                │
+                ▼
+    Browser sends attacker-controlled cookie
+    ```
+
