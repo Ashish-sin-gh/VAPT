@@ -26,7 +26,7 @@ Email change functionalilty.
 
 3. any unpredectable request parameter? -> **YES**
     - but, 
-    - this unoredectable parameter - CSRF token - is not tied to the user session
+    - this unpredectable parameter - CSRF token - is not tied to the user session
     - hence can be altered.
 
 ### Step wise checks for token validation: 
@@ -44,7 +44,7 @@ Email change functionalilty.
     - or access the sign up functionalilty
     - and retrive the new CSRF token 
     - this new CSRF token will also be added into the pool of the apps CSRF token 
-    - check the vicitm session be exploted with the new CSRF token.
+    - check the vicitm session be exploited with the new CSRF token.
     - **if YES, CSRF attack done - email change functionailty effected.**
     - else, CSRF attack not possible as session is chained to the CSRF token.
 
