@@ -329,7 +329,7 @@ CSRF vulnerabilities typically arise due to flawed validation of CSRF tokens.
     This happens coz of improper implementation of CSRF token by the devs.
 
 4. **CSRF token is tied to a non-session cookie**  
-    ([refer lab](.))
+    ([refer lab](./CSRFtokenTiedNonSessionCookie/analysis.md))
 
     ![csrf and session not tied together](./images/csrfkey&sessionkey.png) 
 
@@ -380,3 +380,30 @@ CSRF vulnerabilities typically arise due to flawed validation of CSRF tokens.
     Browser sends attacker-controlled cookie
     ```
 
+5. **CSRF token is simply duplicated in a cookie**  
+    ([refer lab](./CSRFTokenDupilcatedCookie/analysis.md))
+
+    - some applications do not maintain any server-side record of tokens that have been issued
+    
+    - instead they duplicate each token within a cookie and a request parameter.
+    
+    - way to validate?
+        > **CSRF token in cookie = CSRF token in the request parameter** 
+
+    - Aka **`DOUBLE SUBMIT`** defence against CSRF
+
+    - it used coz:
+        - simple to implement
+        - require no server side state 
+
+    - used in stateless applications - apps that dont store any session state in the backend
+
+    #### How attack is perfomed in this situation?
+    
+    1. check if website contain any ***cookie setting functionality***
+
+    2. no need for a valid token of attackers own
+
+    3. inject random CSRF token in:
+        - request parameter and
+        - cookie (by  HTML header injection) - this place the token on vicitms browser.
