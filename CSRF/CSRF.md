@@ -254,7 +254,7 @@ Web Application Vulnerability Scanners(WAVS)
 
     ```
     Set-Cookie: session=test; SameSite=strict
-    Set-Cookie: session=test; SameSite=Lax
+    Set-Cookie: session=test; SameSite=Lax // chrome's default
     Set-Cookie: flavor=choco; SameSite=None; Secure
     ```
 
@@ -407,3 +407,160 @@ CSRF vulnerabilities typically arise due to flawed validation of CSRF tokens.
     3. inject random CSRF token in:
         - request parameter and
         - cookie (by  HTML header injection) - this place the token on vicitms browser.
+
+## Bypassing `SameSite` cookie restrictions:
+
+### <u>background</u>:
+
+- In the context of SameSite cookie restrictions, a site is defined as:
+    - the top-level domain (TLD), eg- `.com` or `.in`
+    - \+ 1 additional level of domain `TLD+1`
+
+- When determining whether a request is same-site or not, the **URL scheme is also taken into consideration**.
+    - eg:
+        ```
+        https://example.com  
+        http://example.com
+        ```
+        not sameSite | cross-site
+
+        ![site domain](./images/sameSiteDomain.png)
+
+    > **note :**   
+    "effective top-level domain" (eTLD) - reserved
+    multipart suffiexs that are treated as top level domain.  
+    eg- `.co.in`
+
+#### What's the difference between a site and an origin?
+
+- `Site` encompasses ***multiple domain-names***
+
+    - A Site is based only on the **registrable domain (eTLD+1)**.
+
+    - Ignores subdomain
+
+        
+
+- `Origin` ***only includes one domain name***.
+
+    - origin defined by 3 things:
+        
+        1. **Scheme** -> `https`, `http`
+        2. **domain(host)** -> `example.com`
+        3. **Port** -> `80`, `443` , etc
+
+            >  scheme + host + port
+
+    Feature | Origin | Site   
+    -------- | -------- | ------ 
+    Protocol / scheme | considered | ✅ Yes | ❌ No
+    Port considered | ✅ Yes | ❌ No
+    Subdomain considered| ✅ Yes | ❌ No
+    Strictness| Very strict | Less strict
+
+    ![site vs origin](./images/siteVSorigin.png)
+
+    #### examples:
+
+    Request from |	Request to |	Same-site? |	Same-origin?
+    ------- | ------- | ---- | -----
+    https://example.com | https://example.com |	**Yes** | **Yes**  
+    https://app.example.com | https://intranet.example.com | **Yes** |No: mismatched domain name
+    <mark>https://example.com</mark> | <mark>https://example.com:8080</mark> | <mark>**Yes**</mark> | <mark>No: mismatched port</mark>
+    https://example.com | https://example.co.uk | No: mismatched eTLD | No: mismatched domain name
+    https://example.com | http://example.com | No: mismatched scheme | No: mismatched scheme 
+
+    ### <mark>A cross-origin request can still be same-site, but not the other way around.</mark>
+
+    - Where it is used?
+
+    - if you find a vulnerabilty in a domain of a site ( eg - `XSS attack`)
+
+    - you can access / send request to other domain of same site.  
+
+    #### Before `SameSite` defence mechanism :
+
+- Any third party website could trigger a request on a site and browser used to send the cookie for the site with the request.
+
+- exposed sites to `CSRF attack`
+
+### 3 restriction level of SameSite:
+
+1. Strict
+2. Lax  // default - if dev dont specify any restriction level for a cookie
+3. none
+
+> **Set-Cookie: session=0F8tgdOhi9ynR1M9wa3ODa; SameSite=Strict**
+
+#### 1. SameSite = Strict:
+
+- No cookie is allowed in cross site requests.
+
+- checks `address bar site` and `requested site`
+    - if same - pass 
+    - else failed - cross-site decteted.
+
+- Can degrade user experience. 
+
+    - example:
+        - you are in login into `facebook.com`
+        - now you open google brower and search facebook.com and clicked on facebook.com
+        - browser will see:
+            - address bar - `google.com`
+            - requested url - `facebook.com`
+        - broswer wont send cookie.
+        - user cant access his stored session. 
+        - relogin required. 
+
+#### 2. SameSite = Lax:
+
+- Cookies are allowed to be included in a cross-site request if and only if:
+    - It's a `GET` request.
+    - Request resulted from a top-level navigation by the user, such as <mark>clicking on a link</mark>. 
+
+- The cookie is not included in background requests, such as:
+    - those initiated by scripts,
+    - iframes,
+    - or references to images `<img src>`
+    - and other resources. 
+
+#### 3. SameSite = None:
+
+- Browers send cookie in all type of requests (same-site, cross-site).
+
+- When setting a cookie with `SameSite=None`, the website must also include the `Secure` attribute, which ensures that the cookie is only sent in <mark>encrypted messages over HTTPS</mark>.  Otherwise, browsers will reject the cookie and it won't be set.
+
+    > **Set-Cookie: trackingId=0F8tgdOhi9ynR1M9wa3ODa; SameSite=None; Secure**
+
+
+### Bypassing SameSite `Lax` restrictions using `GET` requests
+
+- server dont care of `GET` or `POST` method for requests.
+
+- Even for `form` submission  any method can be used.
+
+- `CSRF attack` is possible here.
+
+    - just change the request method from `POST` to `GET` on victim's browser and brower will send the request.
+
+- as it is `Lax` restriction - top level navigation (like click of button) is must.
+
+```
+<script>
+    document.location = 'https://vulnerable-website.com/account/transfer-payment?recipient=hacker&amount=1000000';
+</script>
+```
+- in the above example - it is a `form` submission if you see the url but it is being done by `GET` method.
+
+- **<u>If ordinary `GET` is not allowed</u> :**
+    - some frameworks provide way to override the method used in the request.
+    - example - <mark>Symfony</mark> support `_method` paramter in form.
+    ```
+    <form action="https://vulnerable-website.com/account/transfer-payment" method="POST">
+        <input type="hidden" name="_method" value="GET">
+        <input type="hidden" name="recipient" value="hacker">
+        <input type="hidden" name="amount" value="1000000">
+    </form>
+    ```
+
+    > GET /my-account/change-email?email=test1@tester.ca&**_method=POST** HTTP/1.1
