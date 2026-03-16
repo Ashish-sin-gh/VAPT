@@ -564,3 +564,68 @@ CSRF vulnerabilities typically arise due to flawed validation of CSRF tokens.
     ```
 
     > GET /my-account/change-email?email=test1@tester.ca&**_method=POST** HTTP/1.1
+
+### Bypassing SameSite `Strict` restriction using `on-site gadget`
+
+- cookie -> SameSite=Strict -> no cross-site request allowed.
+
+- can be bypassed -> use on-site gadget
+
+- **Gadget** - any feature / functionalilty of the viticm's site that can be used by attacker to trigger a request
+    
+    - example:
+        - open redirect (client-side redirect - dynamically constructs the redirection target using attacker-controllable input like URL parameters.)
+        - vulnerable Javascript
+        - DOM-based redirect
+        - auto-form submit
+
+#### How to use `on-site gadget` in an attack works:
+
+- The on-site gadget here is - (redirect gadget)
+    > https://bank.com/redirect?next=URL
+
+- JS behind this code is -
+    > document.location = new URLSearchParams(location.search).get("next");
+
+#### Failed attempt:
+- user login into the `bank.com` wesbite 
+    - cookie sent to the broswer 
+        > session=abc123; **SameSite=Strict**
+
+- Victim visits user website:
+    > evil.com
+    - site triggers:  
+        `<img src="https://bank.com/transfer?amount=1000">`
+
+- this is cross-site, no cookie will be passed - failed attack.
+
+#### Successful attack:
+- <u>use of gadget</u>.
+
+- victim open attacker site
+    > evil.com 
+
+- site triggers:
+    > https://bank.com/redirect?next=/transfer?amount=1000
+
+    - step 1:
+        - the brower vists `bank.com/redirect`
+        - cross-site
+        - cookie not sent with the request.
+    
+    - step 2:
+        - `bank.com` javascript runs
+            > document.location = "/transfer?amount=1000"
+        - broswer redirects
+            > bank.com/transfer?amount=1000
+
+        - same-site 
+        - cookie sent.
+
+- server receives:
+    > GET /transfer?amount=1000 Cookie: session=abc123
+
+- attack successful.
+
+#### Note that the equivalent attack is <mark>not possible with server-side redirects.</mark> 
+- this case, browsers recognize that the request to follow the redirect resulted from a cross-site request initially, so they still apply the appropriate cookie restrictions. 
