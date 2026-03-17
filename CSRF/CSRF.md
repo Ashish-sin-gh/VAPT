@@ -629,3 +629,138 @@ CSRF vulnerabilities typically arise due to flawed validation of CSRF tokens.
 
 #### Note that the equivalent attack is <mark>not possible with server-side redirects.</mark> 
 - this case, browsers recognize that the request to follow the redirect resulted from a cross-site request initially, so they still apply the appropriate cookie restrictions. 
+
+### Bypassing `sameSite` restriction via vulnerable sibling domain:
+
+**<mark>A request can still be same-site even if it's issued cross-origin.</mark>**
+
+- audit all of the available attack surface, including any sibling domains.
+
+- In particular, vulnerabilities that enable you to elicit an arbitrary secondary request, such as `XSS`.
+    - can compromise site-based defenses completely
+    - expose all of the site's domains to cross-site attacks. 
+
+- if the target website supports **WebSockets**:
+    - **cross-site WebSocket hijacking (CSWSH)**
+        - which is just a CSRF attack targeting a WebSocket handshake. 
+
+### Bypassing `SameSite` `Lax` restrictions with newly issued cookies
+
+- When `sameSite = Lax` for a cookie included - the cookie is not sent in `non-top-level POST`  request.
+
+- exceptions...
+
+- if `sameSite` restriction is set by default - which is `lax`:
+    - to avoid breaking <mark>single sign-on (SSO)</mark> mechanisms, it doesn't actually enforce these restrictions for the first <mark>120 seconds</mark> on top-level POST requests.
+
+    - **2 min window for cross-site attack.(like CSRF)**
+
+```
+Note: 
+    This two-minute window does not apply to cookies that were explicitly set with the SameSite=Lax attribute.
+```
+
+- **SSO** - user login once on an application and gets to access multiple other applicaiton without login.  
+
+- ### somewhat impractical to time the attack.
+    - hence <mark>refresh the cookies</mark>.
+
+    - if attacker force the vicitm to issue new session cookie, then window will reset.
+
+    - **the core idea in this type of attack is to force user to relogin which will open the 2 min window.**
+
+    - use `gadget` on the victim's site to trigger user relogin.
+        - OAuth login endpoint
+        - auto login redirect
+        - silent authentication
+
+    #### Attack flow:
+
+    ```
+    Victim → attacker site
+          ↓
+    trigger OAuth login
+            ↓
+    site issues NEW session cookie
+            ↓
+    <120 seconds window>
+            ↓
+    attacker sends POST CSRF request
+            ↓
+    cookie included
+            ↓
+    attack successful
+    ```
+
+#### Tigger cookie refresh without manual login:
+
+- To trigger the cookie refresh without the victim having to manually login again, you need to use a `top-level navigation`.
+    - ensures cookies associated with their current OAuth session are included.
+
+#### You dont want victim to exit/redirect attacker's page:
+
+- Why?
+
+- attacker need to run the CSRF attack after new cookie is suppiled.
+
+- #### Solution?
+
+    ```
+    evil.com
+        ↓
+    redirect to SSO
+        ↓
+    SSO login complete
+        ↓
+    redirect back to evil.com
+        ↓
+    CSRF attack
+    ```
+    - But this 'redirect back' depends if victim site allow redirect or not.
+
+- #### better solution?
+
+    - open new tab for victim login
+
+    > window.open('https://vulnerable-website.com/login/sso');
+
+    - Tab 1 → attacker site
+    - Tab 2 → OAuth login
+
+- #### Problem: Popup blockers
+
+    - modern browser automatically blocks popups.
+
+    > window.open('https://vulnerable-website.com/login/sso');
+
+    - as no user interaction - popup will be blocked 
+
+    - if event trigger by `user clicks` - popup allowed
+
+        ```
+        window.onclick = () => {
+        window.open('https://vulnerable-website.com/login/sso');
+        }
+        ```
+    ### Final attack flow:
+
+    ```
+    Victim visits evil.com
+            ↓
+    User clicks anywhere
+            ↓
+    JS opens new tab → site.com/login/sso
+            ↓
+    OAuth login completes
+            ↓
+    New session cookie issued
+            ↓
+    <120 sec SameSite window>
+            ↓
+    evil.com launches CSRF POST request
+            ↓
+    Browser sends fresh cookie
+            ↓
+    Attack successful
+    ````
+

