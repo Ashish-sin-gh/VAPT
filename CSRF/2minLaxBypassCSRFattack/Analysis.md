@@ -36,7 +36,7 @@ if oauth authentication happended in less then 120 seconds - **[this script](./d
 
 - From the `Proxy > HTTP history` tab, find the `POST /my-account/change-email` request and confirm that your session cookie was included even though this is a cross-site POST request. 
 
-2. #### No manual login trigger + refresh session cookie:
+2. #### No manual login trigger + refresh session cookie + new tab:
 
 - if you visit `/social-login`, this automatically initiates the full OAuth flow
 
@@ -52,6 +52,8 @@ if oauth authentication happended in less then 120 seconds - **[this script](./d
 
     - If not, the attack fails because the popup blocker prevents the forced cookie refresh. 
 
-3. #### Bypass popup blocker
+3. #### Bypass popup blocker by user window click:
 
 - need **manual user intergation** for the cookie change trigger
+
+- [Final script](./cookieRefreshTriggerManually.html)
