@@ -270,7 +270,7 @@ Web Application Vulnerability Scanners(WAVS)
 
     #### why it is used?
     the application usually check the if,
-    > referer header = domain of the application
+    > **referer header = domain of the application**
     
     if equal, accept the request
     else, reject the request
@@ -763,4 +763,83 @@ Note:
             ↓
     Attack successful
     ````
+ 
+## Bypassing Referer-based CSRF defenses
 
+- Aside from defenses that employ CSRF tokens,
+
+- Some applications make use of the `HTTP Referer header` to attempt to defend against CSRF attacks.
+
+- By verifying that the request originated from the application's own domain.
+
+- **less effective approch**
+
+### The Referer header is an HTTP request header that tells the server which page the request came from.
+
+- It contains the URL of the page that initiated the request.
+
+- example:
+
+    - user is on: 
+        > https://example.com/profile
+
+    - user click on link:
+        > https://bank.com/transfer
+    
+    - broswer send request:
+        > GET /transfer HTTP/1.1  
+        Host: bank.com  
+        Referer: https://example.com/profile
+
+    - Browsers usually add this header when:
+        - Clicking a link
+        - Submitting a form
+        - Loading images
+        - Loading scripts
+        - AJAX requests
+        - Redirects
+
+    - Browsers or pages may **hide** or **modify** the Referer for privacy.
+        - method includes:
+
+            1. **referrer policy** :
+
+                > Referrer-Policy: no-referrer
+
+            2. **HTTPS → HTTP downgrade** :
+            
+                > https://site.com → http://othersite.com
+                
+                - browser often **removes referer** to avoid leaking secure URLs
+
+            3. **HTML attribute**
+
+                - Developers can disable referer in links:
+
+                    >  \<a href="https://site.com" rel="noreferrer">
+
+            4. **JavaScript / redirects**
+
+                - Certain redirects or scripts can change it.
+        
+- Referer header **cannot be trusted** because:
+    - It can be missing 
+    - It can be manipulated 
+    - Attackers can forge requests
+
+- Example using tools like:
+
+    - Burp Suite
+    - Postman
+
+### Validation of Referer depends on header being present
+
+- some application validate referer header when it is present in the HTTP request header 
+
+- else skip if it is ommited from the header.
+
+    ### Attack:
+
+    - use `META` tag with HTML page that host the CSRF attack
+
+    > \<meta name="referrer" content="never">
