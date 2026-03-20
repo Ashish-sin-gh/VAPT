@@ -843,3 +843,42 @@ Note:
     - use `META` tag with HTML page that host the CSRF attack
 
     > \<meta name="referrer" content="never">
+
+### Validation of Referer can be circumvented:
+
+- If the application validates that the domain in the `Referer` starts with the expected value, then the attacker can place this as a subdomain of their own domain: 
+
+    > http://vulnerable-website.com.attacker-website.com/csrf-attack
+
+- if the application simply validates that the Referer contains its own domain name, then the attacker can place the required value elsewhere in the URL: 
+
+    > http://attacker-website.com/csrf-attack?vulnerable-website.com
+
+    - Why this sometimes works in tools but not in browsers?
+
+        - when testing in burp you will see:
+            > Referer: http://attacker-site.com/?vulnerable-website.com
+
+        - But when the request is sent from a **real browser**, modern browsers often **remove the query string**.
+            > http://attacker-site.com/csrf
+            - This is done to avoid leaking sensitive data. 
+        
+        - **bypass?**
+
+            - Attackers can control the Referrer Policy.
+
+            - HTTP response header:
+
+                > **Referrer-Policy: unsafe-url**
+
+            - this tells the browser to send the **FULL URL** in the referer header
+
+## Secure implemention:
+
+- Use CSRF tokens
+
+- Validate exact origin
+
+- Use SameSite cookies
+
+- Organizations like **OWASP** recommend token-based CSRF protection.
