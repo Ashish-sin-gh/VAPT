@@ -139,3 +139,52 @@
                 - **Decimal-encode** 127.0.0.1 = `2130706433`.
                 - use `127.1` instead of 127.0.0.1
                 - use **octal representation** of local host - `017700000001`.
+
+        2. **DNS rebind attack**
+            - some app uses liberies (not blacklisting) to disallow the calling of pvt. IP URLs.
+            - prevent attacker from port scanning internal network.
+            - bypass this using **DNS rebind attack**.
+                - attacker register a domain name that resolve to Internal IP address.
+                - A website you visit changes its IP address after your browser trusts it, so it can start talking to internal systems (like 127.0.0.1 or LAN devices). 
+        
+        3. **HTTP redirection bypass**
+            - attacker use a URL that points to a server that attacker controls (server has a public Ip address)
+            - Once the URL is visited by the victim machine, it redirect to internal IP address.
+
+        4. **Exploit inconsistancies in URL parsing.**
+
+### Exploting Blind / out-of-band SSRF:
+
+#### Techniques:
+
+1. **No defence** in place to prevent SSRF:
+    - Attempt to trigger an `HTTP / DNS request` to an external server that you(attacker) control and monitor the external server for any network connections
+
+2. If **defences** put in place to prevent SSRF:
+    - **Obfuscate** the external malicious domain (mentioned in 'exploting regular SSRF')
+
+## How to prevent SSRF vulnerabilities:
+
+1. **Defence indepth approch :** 
+    1. Application layer defences
+    2. Network layer defences
+
+    - **Application layer defences:**
+
+        - Sanitize and validate all client suppied-input data.
+
+        - whitelist:
+            - URL schemes
+            - ports
+            - destination IPs / hosts
+
+        - **Dont** sent raw response to the client.
+
+        - Disable HTTP redirections
+
+        > **Never mitigate SSRF vulnerabilties using `deny list` (blacklist) or regular expression**
+
+    - **Network layer defences :**
+        - Segment remote/external resource access functionality in separate networks to reduce the impact of SSRF
+
+        - Enforce `deny-by-default` firewall policy. 
