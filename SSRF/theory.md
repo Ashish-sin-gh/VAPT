@@ -74,6 +74,68 @@
 
 ## How to find SSRF vulnerabilities:
 
-### Black Box POV:
+### Black Box & Gray box POV:
 
-- 
+1. Map the application:
+    - Identify any request parameters or input vector that contain:
+        1. hostnames,
+        2. IP address,
+        3. or full URLs  
+            coz this means that these parameter are being used to communicating with external systems.
+
+2. For **in-band SSRF** - Send SSRF payloads (modify the value to specify an **alternative resource**) to all these potential vulnerable parameters.  
+    - If a defense is in place, attempt to circumvent it using known techniques.
+
+3. For **blind SSRF**- modify the value to a server on the internet that you (attacker) control and monitor the server for incoming requests.
+    - If no incoming connections are received, monitor the time taken for the applicaiton to respond.
+        - Coz some times firewall block the connections.
+
+### White Box POV:
+
+1. Review the source code and identify all the request parameters that accepts URLs.
+    - check the logic for a functionality that talk to the backend and see if any code for SSRF defence is applied or not.
+
+    - If **black list** - easy to bypass
+
+    - for **White list** - check what `URL parser` is being used and if it can be bypassed.
+
+## How to exploit SSRF vulnerabilities:
+
+### Exploting Regular / in-band SSRF:
+
+- **very basic Example :** 
+
+    - <u>Check the stock</u>:
+
+        ![example](./images/inbandSSRFexample.png)
+
+        - stockApi = contains the URL of the app that is responsible for checking the stock
+
+    - <u>Attack payload</u> :
+
+        ![attack](./images/inbandAttackEx.png)
+
+ - ### When app allow for user-supplied arbitrary URLs:
+
+    - Requesting `any URL` is allowed 
+
+    - **Attack:**
+
+        1. Determine if `port number` can be specified.
+
+        2. if yes, `port scan` the internal network using `burp intruder`
+            - Look for other application internally that can give us access to sensitive functionality. 
+
+        3. Attempt to connect to other services on the `loopback address`. (above in the example)
+
+- ### When app dont allow for arbitrary user-suppilied URLs:
+    
+    - Bypass defenses using following technique:
+
+        1. **Use different encoding schemes**
+            - Usually used to bypass `blacklist`.
+            - Example:
+                - if app black list internal IP (127.0.0.1)
+                - **Decimal-encode** 127.0.0.1 = `2130706433`.
+                - use `127.1` instead of 127.0.0.1
+                - use **octal representation** of local host - `017700000001`.
