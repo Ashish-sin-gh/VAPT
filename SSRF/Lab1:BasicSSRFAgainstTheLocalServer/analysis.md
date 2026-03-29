@@ -45,3 +45,7 @@ The `HTTP request` of `check stock` :
         ![deleted user](../images/L1deleteUser.png)
 
         - deleted user `carlos`.
+
+## Attack Script
+
+### [click here](./attack.py)
