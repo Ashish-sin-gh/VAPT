@@ -39,8 +39,7 @@ if __name__ == "__main__":
 
     if ssrf_sucess:
         print("[+] attack done - deleted user")       
-        sys.exit[-1]
+        sys.exit(-1)
     else:
         print("[-] attack failed")
-        sys.exit[-1]
-        
+        sys.exit(-1)
