@@ -163,6 +163,62 @@
 2. If **defences** put in place to prevent SSRF:
     - **Obfuscate** the external malicious domain (mentioned in 'exploting regular SSRF')
 
+## Finding hidden attak surface for SSRF:
+
+- Many SSRF vulnerabilites are easy to find
+    - application normal network traffic contain request that have have parameter containing the URLs.
+
+- ### Harder to find ones SSRFs:
+
+    1. #### Partial URLs in requests:
+        - Sometimes, an application places only a hostname or part of a URL path into request parameters.
+        
+        - The value submitted is then incorporated server-side into a full URL that is requested.
+
+        - attacker have control over **only a part** of the URL.
+
+    2. #### URLs within data formats:
+        - Some data formats (like XML, JSON, PDF, etc.) have features where:
+            - You include a URL inside the data
+            - The server-side parser automatically fetches it
+
+        - That fetch = SSRF
+
+        - When an application accepts data in XML format and parses it, it might be vulnerable to `XXE injection`. It might also be vulnerable to `SSRF via XXE`. 
+
+        - example: (SSRF via XXE)
+            ```
+            <!DOCTYPE foo [
+                <!ENTITY xxe SYSTEM "http://attacker.com">
+            ]>
+            <data>&xxe;</data>
+            ```
+        - fomate that cause this:
+
+            1. **XML**
+
+            2. **SVG** (it is also XML based)       
+                > \<image href="http://attacker.com/image.png"/>
+                - server process it - request triggered
+
+            3. **PDF generator**
+                - Some apps convert HTML → PDF
+
+                    > \<img src="http://attacker.com">
+                    - PDF engine fetch image -> SSRF
+
+            4. **JSON-based integrations**
+                ```
+                {  
+                    "webhook": "http://attacker.com"  
+                }
+                ```
+                - Server may call webhook automatically
+
+            5. **YAML / config files**:
+                > url: http://attacker.com
+                - Some parsers fetch remote content
+
 ## How to prevent SSRF vulnerabilities:
 
 1. **Defence indepth approch :** 
