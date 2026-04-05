@@ -219,6 +219,22 @@
                 > url: http://attacker.com
                 - Some parsers fetch remote content
 
+    3. **SSRF via referer header**:
+        - Some applications use server-side analytics software to tracks visitors. 
+        
+        - This software often logs the Referer header in requests, so it can track incoming links. 
+
+        - hence referer header is used to for SSRF attack.
+            - the analystics s/w will visit the referer header and payload will execute the attack.
+            
+            - example : change,
+
+                > Referer: https://siteA.com
+
+            - to,
+
+                > Referer: http://localhost/admin
+
 ## How to prevent SSRF vulnerabilities:
 
 1. **Defence indepth approch :** 
